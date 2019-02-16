@@ -2,7 +2,7 @@ from scipy.signal import butter, lfilter
 import matplotlib.pyplot as plt
 import numpy
 
-def vector_magnitude(data):
+def vector_magnitude(data, title = "", plot = True):
     """ function to calculate the magnitude of a vector
 
     Calculate the magnitude of the vector superposition of data (for
@@ -20,14 +20,15 @@ def vector_magnitude(data):
         time, x, y, z = entry
         mag = ((x ** 2) + (y ** 2) + (z ** 2)) ** .5
         result.append(mag)
-    # plt.title("walking_steps_2_clean.csv Magnitude")
-    # plt.plot(result)
-    # plt.show()
+    if plot == True:
+        plt.title(title)
+        plt.plot(result)
+        plt.show()
     return result
 
 
 
-def moving_average(data, window_size):
+def moving_average(data, window_size, title):
     """ moving average filter
 
     Implement a simple moving average filter to use as a low pass
@@ -48,7 +49,7 @@ def moving_average(data, window_size):
         https://docs.scipy.org/doc/numpy/reference/generated/numpy.convolve.html
 
     """
-    mylist = vector_magnitude(data)
+    mylist = vector_magnitude(data, plot = False)
     N = window_size
     cumsum, moving_aves = [0], []
 
@@ -56,9 +57,8 @@ def moving_average(data, window_size):
         cumsum.append(cumsum[i-1] + x)
         if i>=N:
             moving_ave = (cumsum[i] - cumsum[i-N])/N
-            #can do stuff with moving_ave here
             moving_aves.append(moving_ave)
-    plt.title("walking_steps_2_clean.csv Moving Average")
+    plt.title(title)
     plt.plot(moving_aves)
     plt.show()
 

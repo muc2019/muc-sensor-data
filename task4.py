@@ -1,13 +1,37 @@
-import parser_data_1
+import parser_climb_data
 from plot_data import plot_data
 import matplotlib.pyplot as plt
 from scipy.signal import butter, lfilter, find_peaks
 import util
+import csv
 
 order = 6
 fs = 25.0
 cutoff = 4
 
+def clean_data(data, start, end, file_name):
+    print("Write codprint(data)e to remove garbage data")
+    data = data[start:end]
+
+    print("Create new file without garbage data and save it in data folder")
+    file_name_clean = file_name
+
+    with open(file_name_clean, 'wb') as f:
+        writer = csv.writer(f, delimiter=',')
+        writer.writerows(data)
+
+def parse_data(data):
+    baro_arr = []
+    mag_arr = []
+    for entry in data:
+        time, x, y, z, baro = entry
+        mag_arr.append((time, x, y, z))
+        baro_arr.append(baro)
+    plot_data(mag_arr)
+    plt.title("climb_steps_clean.csv Pre-segmented Barometer")
+    plt.plot(baro_arr)
+    plt.show()
+    return[mag_arr, baro_arr]
 
 def butter_lowpass(cutoff, fs, order=5):
     nyq = 0.5 * fs
@@ -34,32 +58,22 @@ def segment_climbing_walking(data):
     '''
 
     print('segment_climbing_walking')
-    # Further parsing the data
-    time_arr = []
-    x_arr = []
-    y_arr = []
-    z_arr = []
-    baro_arr = []
-    mag_arr = []
-    for entry in data:
-        time, x, y, z, baro = entry
-        mag_arr.append((time, x, y, z))
-        time_arr.append(time)
-        x_arr.append(x)
-        y_arr.append(y)
-        z_arr.append(z)
-        baro_arr.append(baro)
-    new_data = util.vector_magnitude(mag_arr)
-    # plt.title("climbing_steps_clean.csv Pre-segmented Barometer")
-    # plt.plot(baro_arr)
-    # plt.show()
-    # Getting moving average
-    N = 80
+    mag_arr = data[0]
+    baro_arr = data[1]
+    mag_data = util.vector_magnitude(mag_arr, plot = False)
+    plt.title("climb_steps_clean.csv Segmented Climbing X, Y, Z Magnitude")
+    plt.plot(mag_data)
+    plt.show()
+    plt.title("climb_steps_clean.csv Segmented Climbing Barometer Raw")
+    plt.plot(baro_arr)
+    plt.show()
+
+    window = 80
     cumsum, moving_aves = [0], []
     for i, x in enumerate(baro_arr[5:], 1):
         cumsum.append(cumsum[i-1] + x)
-        if i >= N:
-            moving_ave = (cumsum[i] - cumsum[i-N])/N
+        if i >= window:
+            moving_ave = (cumsum[i] - cumsum[i-window])/window
             moving_aves.append(moving_ave)
     climbing = []
     walking = []
@@ -68,13 +82,26 @@ def segment_climbing_walking(data):
             climbing.append(i)
         else:
             walking.append(i)
-        vals = []
+    vals = []
     for entry in climbing:
         vals.append(baro_arr[entry])
-    plt.title("climbing_steps_clean.csv Segmented Climbing Barometer")
-    plt.scatter(climbing, vals)
+    plt.title("climb_steps_clean.csv Segmented Climbing Barometer Moving Average")
+    plt.plot(climbing, vals)
     plt.show()
-    return climbing
+
+    m_vals = []
+    b_vals = []
+    for entry in walking:
+        m_vals.append(mag_data[entry])
+        b_vals.append(baro_arr[entry])
+    plt.title("climb_steps_clean.csv Segmented Walking X, Y, Z Magnitude")
+    plt.plot(walking, m_vals)
+    plt.show()
+
+    plt.title("climb_steps_clean.csv Segmented Walking Barometer Raw")
+    plt.plot(walking, b_vals)
+    plt.show()
+    return [mag_data, climbing]
 
 
 def count_steps(data):
@@ -83,9 +110,11 @@ def count_steps(data):
     '''
     This function counts the number of steps in data and returns the number of steps
     '''
+    mag_data = data[0]
+    climbing = data[1]
     vals = []
-    for entry in data:
-        vals.append(new_data[entry])
+    for entry in climbing:
+        vals.append(mag_data[entry])
 
     plt.subplot(2, 1, 2)
     plt.plot(vals, 'b-', label='Raw Magnitude')
@@ -107,16 +136,17 @@ def count_steps(data):
     print(num_steps)
     return num_steps
 
-
 def main():
     # Get data
-    file_name = "climb_steps_clean.csv"  # Change this to your data file name
-    data = parser_data_1.get_data(file_name)
+    file_name = "climb_steps.csv"
+    data = parser_climb_data.get_data(file_name)
+    clean_data(data, 154, 950, "climb_steps_clean.csv")
+    cleaned_data = parser_climb_data.get_data("climb_steps_clean.csv")
+    parsed_data = parse_data(cleaned_data)
 
-    segmented_data = segment_climbing_walking(data)
+    segmented_data = segment_climbing_walking(parsed_data)
     number_of_steps = count_steps(segmented_data)
-    # print ("Number of steps counted are :{0:d}".format(number_of_steps))
-
+    print ("Number of steps counted are :{0:d}".format(number_of_steps))
 
 if __name__ == "__main__":
     main()
